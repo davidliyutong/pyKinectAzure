@@ -55,6 +55,17 @@ class Image:
 	def size(self):
 		return self.get_size()
 
+	@property
+	def timestamp_usec(self):
+		return self.get_timestamp_usec()
+
+	@property
+	def device_timestamp_usec(self):
+		return self.get_device_timestamp_usec()
+
+	@property
+	def system_timestamp_nsec(self):
+		return self.get_system_timestamp_nsec()
 
 	def get_buffer(self):
 		if not self._handle:
@@ -126,3 +137,12 @@ class Image:
 			return True, np.frombuffer(buffer_array, dtype="<u2").copy().reshape(image_height,image_width)
 		elif image_format == _k4a.K4A_IMAGE_FORMAT_CUSTOM:
 			return True, np.frombuffer(buffer_array, dtype="<i2").copy()
+
+	def get_timestamp_usec(self):
+		return _k4a.k4a_image_get_timestamp_usec(self._handle)
+
+	def get_device_timestamp_usec(self):
+		return _k4a.k4a_image_get_device_timestamp_usec(self._handle)
+
+	def get_system_timestamp_nsec(self):
+		return _k4a.k4a_image_get_system_timestamp_nsec(self._handle)
