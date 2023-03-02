@@ -1,5 +1,6 @@
 import ctypes
 
+import numpy as np
 from pykinect_azure.k4a import _k4a
 
 
@@ -10,6 +11,8 @@ class Calibration:
         self._handle = calibration_handle
         self.color_params = self._handle.color_camera_calibration.intrinsics.parameters.param
         self.depth_params = self._handle.depth_camera_calibration.intrinsics.parameters.param
+        self.color_extrinsics = self._handle.color_camera_calibration.extrinsics
+        self.depth_extrinsics = self._handle.depth_camera_calibration.extrinsics
 
     def __del__(self):
 
@@ -37,6 +40,13 @@ class Calibration:
         )
         return message
 
+    def get_all_parameters(self):
+        return {
+            "intrinsic": self.get_intrinsic_matrix(),
+            "extrinsic": self.get_extrinsic_matrix(),
+            "misc": self.get_misc_parameters()
+        }
+
     def get_matrix(self, camera: _k4a.k4a_calibration_type_t):
         if camera == _k4a.K4A_CALIBRATION_TYPE_COLOR:
             return [[self.color_params.fx, 0, self.color_params.cx],
@@ -47,6 +57,57 @@ class Calibration:
                     [0, self.depth_params.fy, self.depth_params.cy],
                     [0, 0, 1]]
 
+    def get_intrinsic_matrix(self):
+        """
+        Get intrinsic matrix for color and depth cameras
+        :return:
+        """
+        return {
+            'color': [[self.color_params.fx, 0, self.color_params.cx],
+                      [0, self.color_params.fy, self.color_params.cy],
+                      [0, 0, 1]],
+            'depth': [[self.depth_params.fx, 0, self.depth_params.cx],
+                      [0, self.depth_params.fy, self.depth_params.cy],
+                      [0, 0, 1]]
+        }
+
+    def get_extrinsic_matrix(self):
+        color_rotation = np.array(list(self.color_extrinsics.rotation)).reshape(3, 3)
+        depth_rotation = np.array(list(self.depth_extrinsics.rotation)).reshape(3, 3)
+        color_translation = np.array(list(self.color_extrinsics.translation)) * 1e-3
+        depth_translation = np.array(list(self.depth_extrinsics.translation)) * 1e-3
+
+        color_matrix = np.eye(4)
+        color_matrix[:3, :3] = color_rotation
+        color_matrix[:3, 3] = color_translation
+        depth_matrix = np.eye(4)
+        depth_matrix[:3, :3] = depth_rotation
+        depth_matrix[:3, 3] = depth_translation
+
+        return {
+            "color": color_matrix.tolist(),
+            "depth": depth_matrix.tolist()
+        }
+
+    def get_misc_parameters(self):
+        return {
+            "color": {
+                "k": [self.color_params.k1, self.color_params.k2, self.color_params.k3, self.color_params.k4,
+                      self.color_params.k5, self.color_params.k6],
+                "p": [self.color_params.p1, self.color_params.p2],
+                "codx": self.color_params.codx,
+                "cody": self.color_params.cody,
+                "metric_radius": self.color_params.metric_radius
+            },
+            "depth": {
+                "k": [self.depth_params.k1, self.depth_params.k2, self.depth_params.k3, self.depth_params.k4,
+                      self.depth_params.k5, self.depth_params.k6],
+                "p": [self.depth_params.p1, self.depth_params.p2],
+                "codx": self.depth_params.codx,
+                "cody": self.depth_params.cody,
+                "metric_radius": self.depth_params.metric_radius
+            }
+        }
     def is_valid(self):
         return self._handle
 
@@ -118,6 +179,6 @@ class Calibration:
 
         _k4a.VERIFY(
             _k4a.k4a_calibration_color_2d_to_depth_2d(self._handle, source_point2d, depth_image, target_point2d,
-                                                           valid), "Failed to convert from Color 2D to Depth 2D")
+                                                      valid), "Failed to convert from Color 2D to Depth 2D")
 
         return target_point2d
