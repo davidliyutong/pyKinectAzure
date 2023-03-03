@@ -44,7 +44,7 @@ class Calibration:
         return {
             "intrinsic": self.get_intrinsic_matrix(),
             "extrinsic": self.get_extrinsic_matrix(),
-            "misc": self.get_misc_parameters()
+            "distortion": self.get_distort_parameters()
         }
 
     def get_matrix(self, camera: _k4a.k4a_calibration_type_t):
@@ -89,7 +89,7 @@ class Calibration:
             "depth": depth_matrix.tolist()
         }
 
-    def get_misc_parameters(self):
+    def get_distort_parameters(self):
         return {
             "color": {
                 "k": [self.color_params.k1, self.color_params.k2, self.color_params.k3, self.color_params.k4,
